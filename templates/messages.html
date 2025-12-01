@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Chat com {{ other.name }}</h2>
+
+<div style="border: 1px solid #ccc; padding: 15px; height: 400px; overflow-y: auto; background-color: #f9f9f9;" id="chat-box">
+
+    {% for msg in messages %}
+        <div style="margin-bottom: 12px;">
+
+            {% if msg.sender_id == session['company_id'] %}
+                <div style="text-align: right;">
+                    <span style="background-color: #dcf8c6; padding: 6px 12px; border-radius: 10px; display: inline-block;">
+                        {{ msg.content }}
+                    </span>
+                    <small style="display: block; font-size: 0.75em;">
+                        Você — {{ msg.created_at.strftime('%d/%m/%Y %H:%M') }}
+                    </small>
+                </div>
+
+            {% else %}
+                <div style="text-align: left;">
+                    <span style="background-color: #ffffff; padding: 6px 12px; border-radius: 10px; border: 1px solid #ccc; display: inline-block;">
+                        {{ msg.content }}
+                    </span>
+                    <small style="display: block; font-size: 0.75em;">
+                        {{ other.name }} — {{ msg.created_at.strftime('%d/%m/%Y %H:%M') }}
+                    </small>
+                </div>
+            {% endif %}
+
+        </div>
+    {% endfor %}
+
+</div>
+
+<form method="POST" style="margin-top: 15px;">
+    <input
+        type="text"
+        name="message"
+        placeholder="Digite sua mensagem..."
+        style="width: 80%; padding: 8px;"
+        required
+    >
+    <button type="submit" style="padding: 8px 15px;">Enviar</button>
+</form>
+
+<script>
+    const box = document.getElementById("chat-box");
+    box.scrollTop = box.scrollHeight;
+</script>
+
+{% endblock %}
+

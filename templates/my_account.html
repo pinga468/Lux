@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Minha Conta</h2>
+
+<div class="card">
+  <h3>{{ company.name }}</h3>
+  <p>{{ company.bio or "Sem bio" }}</p>
+  <p>
+    {% if company.website %}
+      <a href="{{ company.website }}" target="_blank">{{ company.website }}</a>
+    {% else %}
+      Sem site
+    {% endif %}
+  </p>
+  <p><strong>Categoria:</strong> {{ company.category.name if company.category else '—' }}</p>
+</div>
+
+<div style="margin-top: 15px;">
+  <a href="{{ url_for('edit_account') }}">
+    <button style="padding: 8px 15px; cursor: pointer;">Editar Conta</button>
+  </a>
+</div>
+
+<div style="margin-top: 15px;">
+  <a href="{{ url_for('my_investments') }}">
+    <button style="padding: 8px 15px; cursor: pointer;">Meus Investimentos</button>
+  </a>
+</div>
+
+<!-- Botão para excluir conta -->
+<div style="margin-top: 15px;">
+  <form action="{{ url_for('delete_account', company_id=company.id) }}" method="POST" onsubmit="return confirm('Tem certeza que quer apagar sua conta? Essa ação é irreversível!');">
+    <button type="submit" style="background:red; color:white; padding:8px 15px; cursor:pointer;">Excluir Conta</button>
+  </form>
+</div>
+
+<hr>
+
+<h3>Iniciar Chat com Outra Empresa</h3>
+<form method="POST" action="{{ url_for('my_account') }}" style="margin-bottom:20px;">
+  <input type="text" name="other_name" placeholder="Nome da empresa" required style="padding:5px; width:200px;">
+  <button type="submit" style="padding: 5px 10px; cursor:pointer;">Iniciar Chat</button>
+</form>
+
+<hr>
+
+<h3>Investimentos Recebidos nos Meus Posts</h3>
+{% if investments_received %}
+  {% for inv in investments_received %}
+    <div class="card">
+      <p><strong>Investidor:</strong> {{ inv.investor.name }}</p>
+      <p><strong>Post:</strong> {{ inv.post.title }}</p>
+      <p><strong>Valor:</strong> R$ {{ inv.amount }}</p>
+      <p><strong>Data:</strong> {{ inv.created_at.strftime('%d/%m/%Y %H:%M') }}</p>
+    </div>
+  {% endfor %}
+{% else %}
+  <p>Ninguém investiu nos seus posts ainda.</p>
+{% endif %}
+
+<hr>
+
+<h3>Conversas Recentes</h3>
+{% if recent_chats %}
+  <ul style="list-style: none; padding: 0;">
+    {% for chat in recent_chats %}
+      {% set other = chat['other'] %}
+      {% set last_msg = chat['last_msg'] %}
+      <li style="margin-bottom:10px;">
+        <a href="{{ url_for('chat', other_id=other.id) }}" style="text-decoration:none; color:#333;">
+          <div class="card" style="padding:10px;">
+            <strong>{{ other.name }}</strong><br>
+            <span style="font-size:0.9em; color:#555;">
+              {{ last_msg.content[:50] }}{% if last_msg.content|length > 50 %}...{% endif %}
+            </span><br>
+            <small>{{ last_msg.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
+          </div>
+        </a>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>Nenhuma conversa ainda.</p>
+{% endif %}
+
+{% endblock %}

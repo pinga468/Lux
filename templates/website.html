@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>{{ company.name }} — Website</h2>
+<p>{{ company.description }}</p>
+
+<a href="/company/{{ company.id }}/post/create">Criar post</a>
+
+<h3>Postagens</h3>
+
+{% for p in posts %}
+  <div class="card">
+    <h3>{{ p.title }}</h3>
+    <p>{{ p.content }}</p>
+    <a href="/post/{{ p.id }}">Ver post</a>
+  </div>
+{% else %}
+  <p>Nenhum post ainda.</p>
+{% endfor %}
+
+{% endblock %}

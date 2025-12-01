@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Conversas</h2>
+
+<div class="card">
+    {% if contacts %}
+        <ul>
+            {% for c in contacts %}
+                <li>
+                    <a href="{{ url_for('chat', other_id=c.id) }}">
+                        {{ c.name }}
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Nenhuma conversa ainda.</p>
+    {% endif %}
+</div>
+
+{% endblock %}
+

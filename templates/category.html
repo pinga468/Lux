@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ category_name }} - Mensagens</title>
+</head>
+<body>
+    <h1>Categoria: {{ category_name }}</h1>
+
+    <h2>Mensagens já postadas:</h2>
+    <ul>
+        {% for msg in messages %}
+        <li><strong>{{ msg.company }}:</strong> {{ msg.message }}</li>
+        {% else %}
+        <li>Nenhuma mensagem ainda.</li>
+        {% endfor %}
+    </ul>
+
+    <h2>Adicionar nova mensagem:</h2>
+    <form method="POST" action="{{ url_for('add_message', category_name=category_name) }}">
+        Empresa: <input type="text" name="company" required><br>
+        Mensagem: <input type="text" name="message" required><br>
+        <button type="submit">Postar</button>
+    </form>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Editar Post</h2>
+
+<form method="POST">
+  <label>Título:</label><br>
+  <input type="text" name="title" value="{{ post.title }}" required><br><br>
+
+  <label>Conteúdo:</label><br>
+  <textarea name="content" rows="5" required>{{ post.content }}</textarea><br><br>
+
+  <label>Investimento:</label><br>
+  <input type="number" name="investment" min="0" value="{{ post.investment }}"><br><br>
+
+  <button type="submit">Salvar Alterações</button>
+</form>
+
+<a href="{{ url_for('post_view', post_id=post.id) }}">Cancelar</a>
+{% endblock %}

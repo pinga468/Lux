@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>🔎 Buscar Post</h2>
+
+<form method="GET" action="/search_post">
+    <input type="text" name="q" placeholder="Título do post" required>
+    <button type="submit">Buscar</button>
+</form>
+
+<hr>
+
+{% if results is not none %}
+    <h3>Resultados:</h3>
+
+    {% if results %}
+        <ul>
+        {% for p in results %}
+            <li>
+                <a href="/post/{{ p.id }}">
+                    <strong>{{ p.title }}</strong>
+                </a>
+                — <small>{{ p.company.name }}</small>
+            </li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>Nenhum post encontrado.</p>
+    {% endif %}
+{% endif %}
+
+{% endblock %}

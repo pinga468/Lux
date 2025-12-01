@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>JSON Loader</title>
+    <script>
+        async function loadJSON() {
+            const fileInput = document.getElementById("jsonFile");
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append("file", file);
+
+            const response = await fetch("/load_json", {
+                method: "POST",
+                body: formData
+            });
+
+            const result = await response.json();
+            document.getElementById("output").textContent = JSON.stringify(result, null, 2);
+        }
+
+        async function saveJSON() {
+            const response = await fetch("/save_json", {
+                method: "POST"
+            });
+
+            const result = await response.json();
+            document.getElementById("output").textContent = JSON.stringify(result, null, 2);
+        }
+    </script>
+</head>
+<body>
+    <h1>JSON Loader</h1>
+
+    <input type="file" id="jsonFile" accept=".json">
+    <button onclick="loadJSON()">Carregar JSON</button>
+    <button onclick="saveJSON()">Salvar JSON</button>
+
+    <pre id="output"></pre>
+</body>
+</html>

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>🔎 Buscar Empresa</h2>
+
+<form method="GET" action="/search_company">
+    <input type="text" name="q" placeholder="Nome da empresa" required>
+    <button type="submit">Buscar</button>
+</form>
+
+<hr>
+
+{% if results is not none %}
+    <h3>Resultados:</h3>
+
+    {% if results %}
+        <ul>
+        {% for c in results %}
+            <li>
+                <a href="/companies/{{ c.id }}">
+                    {{ c.name }}
+                </a>
+            </li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>Nenhuma empresa encontrada.</p>
+    {% endif %}
+{% endif %}
+
+{% endblock %}

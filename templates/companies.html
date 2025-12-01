@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Empresas em {{ category.name }}</title>
+</head>
+<body>
+    <h1>Empresas na categoria: {{ category.name }}</h1>
+
+    {% for item in companies_with_posts %}
+        <h2>{{ item.company.name }}</h2>
+        <p>{{ item.company.bio }}</p>
+        <p>Website: <a href="{{ item.company.website }}">{{ item.company.website }}</a></p>
+
+        <h3>Posts da empresa:</h3>
+        <ul>
+            {% if item.posts %}
+                {% for post in item.posts %}
+                    <li>
+                        <a href="{{ url_for('post_view', post_id=post.id) }}">{{ post.title }}</a>
+                        - Likes: {{ post.likes }} - Investimento: {{ post.investment }}
+                    </li>
+                {% endfor %}
+            {% else %}
+                <li>Sem posts ainda.</li>
+            {% endif %}
+        </ul>
+        <hr>
+    {% endfor %}
+</body>
+</html>

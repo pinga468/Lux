@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card">
+  <h2>{{ company.name }}</h2>
+
+  <p><strong>Categoria:</strong> {{ company.category.name if company.category else '—' }}</p>
+  <p>{{ company.bio or "Sem descrição." }}</p>
+
+  {% if company.website %}
+      <p>
+        <strong>Website externo:</strong>
+        <a href="{{ company.website }}" target="_blank">{{ company.website }}</a>
+      </p>
+  {% endif %}
+
+  <p><small>Criada: {{ company.created_at.strftime('%d/%m/%Y') }}</small></p>
+
+  <br>
+
+  <!-- BOTÃO PARA O WEBSITE INTERNO (posts, like, invest, etc) -->
+  <a href="/company/{{ company.id }}/website" class="btn">Acessar website interno</a>
+
+  <!-- BOTÃO PARA VER O HISTÓRICO DE INVESTIMENTOS -->
+  <br><br>
+  <a href="/company/{{ company.id }}/history" class="btn">Histórico de investimentos</a>
+
+  <!-- Se for a própria empresa logada -->
+  {% if session.company_id == company.id %}
+      <br><br>
+      <a href="/posts/new/{{ company.category_id }}" class="btn">Criar novo post</a>
+      <br><br>
+      <a href="/company/{{ company.id }}/edit" class="btn">Editar empresa</a>
+  {% endif %}
+</div>
+
+<hr>
+
+<h3>Posts desta empresa:</h3>
+
+{% if posts %}
+    <ul>
+        {% for post in posts %}
+            <li>
+                <a href="{{ url_for('post_view', post_id=post.id) }}">{{ post.title }}</a>
+                – Likes: {{ post.likes }} – Investimento: {{ post.investment }}
+            </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <p>Esta empresa ainda não possui posts.</p>
+{% endif %}
+
+{% endblock %}

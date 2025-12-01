@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <title>Lux</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 30px; background:#fafafa }
+    nav a { margin-right:18px; text-decoration:none; font-weight:bold }
+    .card { background:#fff; padding:14px; border-radius:8px; border:1px solid #ddd; margin-bottom:12px }
+    .new-post-menu { margin-left: 20px; display:inline-block; }
+    .new-post-menu a { margin-right:10px; background:#007BFF; color:#fff; padding:4px 8px; border-radius:4px; text-decoration:none; }
+    .new-post-menu a:hover { background:#0056b3; }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a href="/">Home</a>
+    <a href="/categories">Categorias</a>
+    <a href="/categories/create">Criar Categoria</a>
+    <a href="/companies/create">Criar Empresa</a>
+
+    {% if session.get("company_id") %}
+      <a href="/my_account">Minha Conta</a>
+      <a href="/messages">Mensagens</a>
+      <a href="/logout">Sair</a>
+
+      {% if categories %}
+        <div class="new-post-menu">
+          <span>Novo Post:</span>
+          {% for cat in categories %}
+            <a href="{{ url_for('new_post', category_id=cat.id) }}">{{ cat.name }}</a>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+    {% else %}
+      <a href="/login">Entrar</a>
+    {% endif %}
+  </nav>
+
+  <hr>
+
+  {% block content %}{% endblock %}
+
+</body>
+</html>
+

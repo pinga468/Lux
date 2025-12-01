@@ -1,0 +1,11 @@
+<form method="POST">
+    <label>Nome:</label>
+    <input type="text" name="name" value="{{ company.name }}" required>
+    <label>Bio:</label>
+    <textarea name="bio">{{ company.bio }}</textarea>
+    <label>Website:</label>
+    <input type="text" name="website" value="{{ company.website }}">
+    <label>Senha (novo ou vazio pra manter):</label>
+    <input type="password" name="password">
+    <button type="submit">Salvar</button>
+</form>

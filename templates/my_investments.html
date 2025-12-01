@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Meus Investimentos</h2>
+
+{% if investments %}
+  {% for inv in investments %}
+    <div class="card">
+      <p><strong>Post:</strong>
+        <a href="{{ url_for('post_view', post_id=inv.post_id) }}">
+          {{ inv.post.title }}
+        </a>
+      </p>
+
+      <p><strong>Autor:</strong> {{ inv.post.author.name }}</p>
+      <p><strong>Valor investido:</strong> R$ {{ inv.amount }}</p>
+      <p><strong>Data:</strong> {{ inv.created_at }}</p>
+    </div>
+  {% endfor %}
+{% else %}
+  <p>Você ainda não investiu em nada.</p>
+{% endif %}
+
+{% endblock %}

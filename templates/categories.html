@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Categorias</h2>
+
+<form action="/search_combined" method="GET" style="margin-bottom: 25px;">
+    <input 
+        type="text" 
+        name="q" 
+        placeholder="Pesquisar empresa + post..."
+        style="
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 16px;
+        "
+    >
+</form>
+
+{% for c in categories %}
+  <div class="card">
+    <h3>{{ c.name }}</h3>
+    <p>{{ c.description }}</p>
+
+    <h4>📌 Melhores empresas desse ramo</h4>
+
+    {% if c.companies_sorted %}
+        <ul style="list-style: none; padding-left: 0;">
+            {% for comp in c.companies_sorted %}
+                <li style="margin-bottom: 10px;">
+                    <a href="/companies/{{ comp.id }}" style="text-decoration:none; color:#333;">
+                        <div style="
+                            background: #fff;
+                            padding: 10px;
+                            border: 1px solid #ddd;
+                            border-radius: 8px;
+                        ">
+                            <strong>{{ comp.name }}</strong><br>
+
+                            {% if comp.ai_score %}
+                                <small style="color:#666;">
+                                    Score IA: {{ comp.ai_score|round(2) }}
+                                </small>
+                            {% endif %}
+                        </div>
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Nenhuma empresa nessa categoria ainda.</p>
+    {% endif %}
+
+    <br>
+    <a href="/categories/{{ c.id }}/companies">Ver todas empresas</a>
+
+    <hr>
+    <!-- Botão de excluir categoria (só Lux pode) -->
+    <form action="{{ url_for('delete_category', category_id=c.id) }}" method="POST" style="margin-top:10px;">
+        <input type="text" name="username" placeholder="Usuário" required>
+        <input type="password" name="password" placeholder="Senha" required>
+        <button type="submit" style="background:red; color:white; padding:5px 10px; cursor:pointer;">
+            Excluir Categoria
+        </button>
+    </form>
+
+  </div>
+
+{% else %}
+  <p>Nenhuma categoria ainda.</p>
+{% endfor %}
+
+{% endblock %}
+

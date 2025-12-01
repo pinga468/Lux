@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Top Posts - Lux</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f0f2f5; margin: 20px; }
+        h1 { color: #333; }
+        table { border-collapse: collapse; width: 100%; background: #fff; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+        th { background: #007BFF; color: #fff; }
+        tr:nth-child(even) { background: #f9f9f9; }
+        a { color: #007BFF; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <h1>Top Posts - Ranking Global</h1>
+    <table>
+        <tr>
+            <th>#</th>
+            <th>Título</th>
+            <th>Empresa</th>
+            <th>Likes</th>
+            <th>Investimento</th>
+            <th>Comentários</th>
+            <th>Score</th>
+        </tr>
+        {% for i, post in enumerate(posts, 1) %}
+        <tr>
+            <td>{{ i }}</td>
+            <td><a href="{{ url_for('post_view', post_id=post.id) }}">{{ post.title }}</a></td>
+            <td><a href="{{ url_for('company_detail', company_id=post.company_id) }}">{{ post.author.name }}</a></td>
+            <td>{{ post.likes }}</td>
+            <td>{{ post.investment }}</td>
+            <td>{{ post.comments|length }}</td>
+            <td>{{ post.score|round(2) }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>

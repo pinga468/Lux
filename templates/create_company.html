@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Cadastrar Empresa</h2>
+<form method="POST">
+  <label>Nome</label><br>
+  <input name="name"><br><br>
+  <label>Bio</label><br>
+  <textarea name="bio"></textarea><br><br>
+  <label>Website</label><br>
+  <input name="website"><br><br>
+  <label>Categoria</label><br>
+  <select name="category_id">
+    {% for cat in categories %}
+      <option value="{{ cat.id }}">{{ cat.name }}</option>
+    {% endfor %}
+  </select><br><br>
+  <label>Senha</label><br>
+  <input name="password" type="password"><br><br>
+  <button type="submit">Cadastrar</button>
+</form>
+{% endblock %}
