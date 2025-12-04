@@ -53,7 +53,6 @@ class Category(db.Model):
     description = db.Column(db.String(300))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     companies = db.relationship("Company", backref="category", lazy=True)
-    posts = db.relationship("Post", backref="category", lazy=True)
 
 class Company(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -63,7 +62,6 @@ class Company(db.Model):
     password = db.Column(db.String(200), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     category_id = db.Column(db.Integer, db.ForeignKey("category.id"), nullable=True)
-    posts = db.relationship("Post", backref="author", lazy=True)
     comments = db.relationship("Comment", backref="author", lazy=True)
     investments_made = db.relationship("InvestmentHistory", backref="investor", lazy=True, foreign_keys='InvestmentHistory.company_id')
     messages_sent = db.relationship("Message", backref="sender", lazy=True, foreign_keys='Message.sender_id')
@@ -78,9 +76,11 @@ class Post(db.Model):
     investment = db.Column(db.Integer, default=0)
     score = db.Column(db.Float, default=0)
     company_id = db.Column(db.Integer, db.ForeignKey("company.id"), nullable=False)
-    category_id = db.Column(db.Integer, db.ForeignKey("category.id"), nullable=False)
+    category_id = db.Column(db.Integer, db.ForeignKey("category.id", ondelete="CASCADE"), nullable=False)
     comments = db.relationship("Comment", backref="post", lazy=True, cascade="all, delete-orphan")
     investment_history = db.relationship("InvestmentHistory", backref="post", lazy=True, cascade="all, delete-orphan")
+    company = db.relationship("Company", backref="posts")
+    category = db.relationship("Category", backref="posts")
 
 class Comment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -136,6 +136,7 @@ def calculate_post_score(post):
     db.session.commit()
     return post.score
 
+
 def update_all_scores():
     for p in Post.query.all():
         calculate_post_score(p)
@@ -144,14 +145,15 @@ def get_sorted_companies(category, q=None):
     companies = category.companies
     companies_with_score = []
     for c in companies:
-        total = sum((p.score or 0) for p in c.posts)
-        c.ai_score = total
+        total_score = sum((p.score or 0) for p in c.posts)
+        c.total_score = total_score
         companies_with_score.append(c)
-    companies_with_score.sort(key=lambda x: x.ai_score, reverse=True)
+    companies_with_score.sort(key=lambda x: x.total_score, reverse=True)
     if q:
         ql = q.lower()
         return [c for c in companies_with_score if ql in c.name.lower() or any(ql in p.title.lower() for p in c.posts)]
     return companies_with_score
+
 
 @app.route("/")
 def home():
@@ -160,43 +162,88 @@ def home():
     for c in cats:
         c.companies_sorted = get_sorted_companies(c, q if q else None)
     return render_template("home.html", categories=cats, q=q)
+def calculate_post_score(post):
+    base = (post.likes or 0) * 2 + (post.investment or 0) * 3
+    content_factor = min(len(post.content or "") / 100, 10)
+    comment_factor = min(len(post.comments), 10)
+    post.score = base + content_factor + comment_factor
+    db.session.commit()
+    return post.score
+
 @app.route("/categories")
 def categories():
-    cats = Category.query.order_by(Category.name).all()
     q = request.args.get("q", "").strip()
-    for c in cats:
-        c.companies_sorted = get_sorted_companies(c, q if q else None)
+    cats = Category.query.all()
+
+    # Lógica do Top IA
+    top_category = Category.query.filter_by(name="Top melhores empresas por ia").first()
+    if top_category:
+        all_companies = Company.query.all()
+        companies_with_score = []
+
+        for comp in all_companies:
+            total = sum((p.score or 0) for p in comp.posts)
+            if total >= 1:  # só empresas com pelo menos 1 ponto
+                comp.total_score = total  # atributo temporário
+                companies_with_score.append(comp)
+
+        # ordena e limita a 100
+        top_category.companies_sorted = sorted(companies_with_score, key=lambda x: x.total_score, reverse=True)[:100]
+
+    # Busca
+    if q:
+        parts = q.split(maxsplit=1)
+        if len(parts) == 2:
+            company_name, post_title = parts
+            company = Company.query.filter(Company.name.ilike(f"%{company_name}%")).first()
+            if company:
+                post = Post.query.filter(
+                    Post.company_id == company.id,
+                    Post.title.ilike(f"%{post_title}%")
+                ).first()
+                if post:
+                    return redirect(url_for("post_detail", post_id=post.id))
+
+        # busca parcial se não achar combinação exata
+        q_lower = q.lower()
+        filtered_cats = []
+        for c in cats:
+            companies_matching = []
+            for comp in c.companies:
+                if q_lower in comp.name.lower():
+                    companies_matching.append(comp)
+                else:
+                    matching_posts = [p for p in comp.posts if q_lower in (p.title or "").lower()]
+                    if matching_posts:
+                        companies_matching.append(comp)
+            if companies_matching:
+                c.companies_sorted = companies_matching
+                filtered_cats.append(c)
+        cats = filtered_cats
+    else:
+        # ordena normalmente as outras categorias
+        for c in cats:
+            if getattr(c, "companies_sorted", None):
+                continue  # Top IA já calculada
+            companies_with_score = []
+            for comp in c.companies:
+                total = sum((p.score or 0) for p in comp.posts)
+                comp.total_score = total
+                companies_with_score.append(comp)
+            c.companies_sorted = sorted(companies_with_score, key=lambda x: x.total_score, reverse=True)
+
     return render_template("categories.html", categories=cats, q=q)
 
-@app.route("/categories/create", methods=["GET", "POST"])
-def create_category():
-    # credenciais hardcoded
-    SUPER_USER_NAME = "Lux"
-    SUPER_USER_PASSWORD = "Sa0610He"
+@app.route("/posts/<int:post_id>")
+def post_detail(post_id):
+    post = Post.query.get_or_404(post_id)
+    return render_template("post_view.html", post=post)
 
-    if request.method == "POST":
-        username = request.form.get("username", "").strip()
-        password = request.form.get("password", "").strip()
-
-        # verifica se é o superusuário
-        if username != SUPER_USER_NAME or password != SUPER_USER_PASSWORD:
-            return "Você não tem permissão para criar categoria", 403
-
-        # coleta os dados da categoria
-        name = request.form.get("name", "").strip()
-        desc = request.form.get("description", "").strip()
-        if not name:
-            return "Nome é obrigatório", 400
-        if Category.query.filter_by(name=name).first():
-            return "Categoria já existe", 400
-
-        c = Category(name=name, description=desc)
-        db.session.add(c)
-        db.session.commit()
-        return redirect("/categories")
-
-    return render_template("create_category.html")
-
+# rota da empresa se precisar
+@app.route("/companies/<int:company_id>")
+def company_detail(company_id):
+    company = Company.query.get_or_404(company_id)
+    return render_template("company_detail.html", company=company)
 
 @app.route("/categories/<int:category_id>")
 def view_category(category_id):
@@ -205,14 +252,35 @@ def view_category(category_id):
     return render_template("category.html", category=cat, posts=posts)
 
 @app.route("/categories/<int:category_id>/companies")
-def companies_by_category(category_id):
-    cat = Category.query.get_or_404(category_id)
-    companies = Company.query.filter_by(category_id=category_id).all()
-    companies_with_posts = []
-    for c in companies:
-        posts = Post.query.filter_by(company_id=c.id).order_by(Post.created_at.desc()).all()
-        companies_with_posts.append({"company": c, "posts": posts})
-    return render_template("companies.html", category=cat, companies_with_posts=companies_with_posts)
+def category_companies(category_id):
+    category = Category.query.get_or_404(category_id)
+
+    posts = db.session.query(Post).join(Company).filter(Post.category_id == category_id).all()
+
+    companies_map = {}
+    for p in posts:
+        if p.score is None or p.score == 0:
+            calculate_post_score(p)
+
+        comp = p.company
+        if not comp:
+            continue
+
+        if comp.id not in companies_map:
+            companies_map[comp.id] = {
+                "company": comp,
+                "posts": []
+            }
+
+        companies_map[comp.id]["posts"].append(p)
+
+    companies = list(companies_map.values())
+
+    return render_template(
+        "companies.html",
+        category=category,  # <- adiciona isso
+        companies=companies
+    )
 
 @app.route("/companies/create", methods=["GET", "POST"])
 def create_company():
@@ -221,23 +289,27 @@ def create_company():
         name = request.form.get("name")
         bio = request.form.get("bio")
         site = request.form.get("website")
-        cat_id = request.form.get("category_id")
         password = request.form.get("password")
-        if not name or not cat_id or not password:
+        if not name or not password:
             return "Nome, senha e categoria são obrigatórios", 400
         if Company.query.filter_by(name=name).first():
             return "Empresa já existe", 400
-        company = Company(name=name, bio=bio, website=site, category_id=int(cat_id), password=password)
+        company = Company(name=name, bio=bio, website=site, password=password)
         db.session.add(company)
         db.session.commit()
         return redirect(f"/company/{company.id}")
     return render_template("create_company.html", categories=cats)
 
-@app.route("/company/<int:company_id>")
-def company_detail(company_id):
-    company = Company.query.get_or_404(company_id)
-    posts = Post.query.filter_by(company_id=company.id).order_by(Post.created_at.desc()).all()
-    return render_template("company_detail.html", company=company, posts=posts)
+def edit_post(post_id):
+    post = Post.query.get_or_404(post_id)
+
+    if request.method == "POST":
+        post.title = request.form.get("title")
+        post.content = request.form.get("content")
+        db.session.commit()
+        return redirect(url_for("post_detail", post_id=post.id))
+
+    return render_template("edit_post.html", post=post)
 
 @app.route("/company/<int:company_id>/website")
 def company_website(company_id):
@@ -284,12 +356,19 @@ def login():
 def logout():
     session.clear()
     return redirect("/")
+    
+    
 
 @app.route("/my_account", methods=["GET", "POST"])
 def my_account():
     if "company_id" not in session:
         return redirect("/login")
+
     company = Company.query.get(session["company_id"])
+    if not company:
+        session.pop("company_id", None)  # limpa a sessão se estiver inválida
+        return redirect("/login")
+
     if request.method == "POST":
         other_name = request.form.get("other_name", "").strip()
         other_company = Company.query.filter_by(name=other_name).first()
@@ -330,6 +409,7 @@ def my_account():
         investments_made=investments_made,
         contacts=contact_companies
     )
+
 @app.route("/my_investments")
 def my_investments():
     if "company_id" not in session:
@@ -402,6 +482,20 @@ def edit_account():
         return redirect("/my_account")
 
     return render_template("edit_account.html", company=company)
+@app.route("/category_rank/<int:category_id>")
+def category_rank(category_id):
+    category = Category.query.get_or_404(category_id)
+
+    posts = Post.query.filter_by(category_id=category.id).all()
+
+    # recalcula se precisar
+    for p in posts:
+        calculate_post_score(p)
+
+    posts_sorted = sorted(posts, key=lambda p: (p.score or 0), reverse=True)
+
+    return render_template("category_rank.html", category=category, posts=posts_sorted)
+
 
 
 # -----------------------------
@@ -430,11 +524,22 @@ def new_post(category_id):
         return redirect("/login")
 
     category = Category.query.get_or_404(category_id)
+    categories = Category.query.order_by(Category.name).all()
 
     if request.method == "POST":
         title = request.form.get("title", "").strip()
         content = request.form.get("content", "").strip()
         invest = request.form.get("investment") or 0
+
+        selected_category_id = int(request.form.get("category_id", category_id))
+        selected_category = Category.query.get(selected_category_id)
+
+        if not selected_category:
+            return "Categoria inválida", 400
+
+        # 🚫 PROTEÇÃO — categoria bloqueada
+        if selected_category.name.strip().lower() == "top melhores empresas por ia":
+            return "Não é permitido criar posts nessa categoria.", 403
 
         if not title:
             return "Título obrigatório", 400
@@ -443,16 +548,16 @@ def new_post(category_id):
             title=title,
             content=content,
             company_id=session["company_id"],
-            category_id=category_id,
+            category_id=selected_category_id,
             investment=int(invest)
         )
         db.session.add(post)
         db.session.commit()
-        calculate_post_score(post)
 
+        calculate_post_score(post)
         return redirect(url_for("post_view", post_id=post.id))
 
-    return render_template("new_post.html", category=category)
+    return render_template("new_post.html", category=category, categories=categories)
 
 
 @app.route("/post/<int:post_id>", methods=["GET", "POST"])
@@ -460,7 +565,6 @@ def post_view(post_id):
     post = Post.query.get_or_404(post_id)
 
     if request.method == "POST":
-
         # Comentário
         if "comment" in request.form:
             if "company_id" not in session:
@@ -480,13 +584,17 @@ def post_view(post_id):
             if "company_id" not in session:
                 return redirect("/login")
 
-            liked = PostLike.query.filter_by(post_id=post.id, company_id=session["company_id"]).first()
+            company_id = session["company_id"]
+            liked = PostLike.query.filter_by(post_id=post.id, company_id=company_id).first()
             if not liked:
-                like = PostLike(post_id=post.id, company_id=session["company_id"])
-                post.likes += 1
+                like = PostLike(post_id=post.id, company_id=company_id)
                 db.session.add(like)
-                db.session.commit()
+                db.session.commit()  # Commit primeiro para salvar o like
+
+                # Atualiza o post.likes contando direto do banco
+                post.likes = PostLike.query.filter_by(post_id=post.id).count()
                 calculate_post_score(post)
+                db.session.commit()
 
             return redirect(url_for("post_view", post_id=post.id))
 
@@ -498,14 +606,23 @@ def post_view(post_id):
             amount = int(request.form.get("invest", 0))
             if amount > 0:
                 inv = InvestmentHistory(company_id=session["company_id"], post_id=post.id, amount=amount)
-                post.investment += amount
                 db.session.add(inv)
-                db.session.commit()
+                db.session.commit()  # Commit primeiro para salvar o investimento
+
+                # Atualiza o post.investment contando direto do banco
+                post.investment = db.session.query(db.func.sum(InvestmentHistory.amount)).filter_by(post_id=post.id).scalar() or 0
                 calculate_post_score(post)
+                db.session.commit()
 
             return redirect(url_for("post_view", post_id=post.id))
 
-    return render_template("post_view.html", post=post)
+    # Atualiza likes e investment antes de renderizar
+    likes_count = PostLike.query.filter_by(post_id=post.id).count()
+    investment_total = db.session.query(db.func.sum(InvestmentHistory.amount)).filter_by(post_id=post.id).scalar() or 0
+
+    return render_template("post_view.html", post=post, likes_count=likes_count, investment_total=investment_total)
+
+
 @app.route("/post/<int:post_id>/delete", methods=["POST"])
 def delete_post(post_id):
     post = Post.query.get_or_404(post_id)
@@ -524,19 +641,57 @@ def delete_comment(comment_id):
     db.session.delete(comment)
     db.session.commit()
     return redirect(url_for("post_view", post_id=comment.post_id))
-@app.route("/categories/delete/<int:category_id>", methods=["POST"])
+@app.route("/categories/<int:category_id>/delete", methods=["GET", "POST"])
 def delete_category(category_id):
-    # Só o superusuário Lux pode deletar
-    username = request.form.get("username")
-    password = request.form.get("password")
-    if username != "Lux" or password != "Sa0610He":
-        return "Acesso negado", 403
-
     category = Category.query.get_or_404(category_id)
-    db.session.delete(category)
-    db.session.commit()
-    return redirect("/categories")
 
+    if request.method == "POST":
+        user = request.form.get("user")
+        password = request.form.get("password")
+
+        if user == "Lux" and password == "Sa0610He":
+            db.session.delete(category)
+            db.session.commit()
+            return redirect("/categories")
+        else:
+            return "Usuário ou senha incorretos!"
+
+    return render_template("confirm_delete_category.html", category=category)
+
+@app.route("/categories/<int:category_id>/edit", methods=["GET", "POST"])
+def edit_category(category_id):
+    category = Category.query.get_or_404(category_id)
+
+    if request.method == "POST":
+        user = request.form.get("admin_user")
+        password = request.form.get("admin_pass")
+
+        if user != "Lux" or password != "Sa0610He":
+            return "Acesso negado.", 403
+
+        category.name = request.form.get("name")
+        category.description = request.form.get("description")
+        db.session.commit()
+
+        return redirect(url_for("categories"))
+
+    return render_template("category_edit.html", category=category)
+@app.route("/categories/new", methods=["GET", "POST"])
+def new_category():
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        desc = request.form.get("description", "").strip()
+
+        if not name:
+            return "Nome obrigatório", 400
+
+        cat = Category(name=name, description=desc)
+        db.session.add(cat)
+        db.session.commit()
+
+        return redirect(url_for("categories"))
+
+    return render_template("create_category.html")
 
 # ---------------------------------------------------
 #   🔎 PESQUISA COMBINADA (EMPRESA + POST)
@@ -590,6 +745,7 @@ def delete_account(company_id):
     except Exception as e:
         db.session.rollback()
         return f"Erro ao excluir a conta: {str(e)}"
+        
 
 
 # -----------------------------

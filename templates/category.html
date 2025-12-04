@@ -1,25 +1,23 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>{{ category_name }} - Mensagens</title>
+    <title>{{ category.name }} - Posts</title>
 </head>
 <body>
-    <h1>Categoria: {{ category_name }}</h1>
+    <h1>Categoria: {{ category.name }}</h1>
 
-    <h2>Mensagens já postadas:</h2>
+    <h2>Posts:</h2>
     <ul>
-        {% for msg in messages %}
-        <li><strong>{{ msg.company }}:</strong> {{ msg.message }}</li>
+        {% for post in posts %}
+            <li>
+                <a href="{{ url_for('post_view', post_id=post.id) }}">{{ post.title }}</a>
+                — por {{ post.company.name }}
+            </li>
         {% else %}
-        <li>Nenhuma mensagem ainda.</li>
+            <li>Nenhum post nesta categoria.</li>
         {% endfor %}
     </ul>
 
-    <h2>Adicionar nova mensagem:</h2>
-    <form method="POST" action="{{ url_for('add_message', category_name=category_name) }}">
-        Empresa: <input type="text" name="company" required><br>
-        Mensagem: <input type="text" name="message" required><br>
-        <button type="submit">Postar</button>
-    </form>
+    <a href="{{ url_for('new_post', category_id=category.id) }}">Criar novo post</a>
 </body>
 </html>

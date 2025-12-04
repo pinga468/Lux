@@ -17,7 +17,7 @@
   <nav>
     <a href="/">Home</a>
     <a href="/categories">Categorias</a>
-    <a href="/categories/create">Criar Categoria</a>
+    <a href="{{ url_for('new_category') }}">Criar Categoria</a>
     <a href="/companies/create">Criar Empresa</a>
 
     {% if session.get("company_id") %}

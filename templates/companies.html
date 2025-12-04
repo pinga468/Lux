@@ -1,30 +1,36 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Empresas em {{ category.name }}</title>
-</head>
-<body>
-    <h1>Empresas na categoria: {{ category.name }}</h1>
+{% extends "base.html" %}
+{% block content %}
 
-    {% for item in companies_with_posts %}
-        <h2>{{ item.company.name }}</h2>
-        <p>{{ item.company.bio }}</p>
-        <p>Website: <a href="{{ item.company.website }}">{{ item.company.website }}</a></p>
+<h2>Empresas na categoria: {{ category.name }}</h2>
 
-        <h3>Posts da empresa:</h3>
-        <ul>
-            {% if item.posts %}
-                {% for post in item.posts %}
-                    <li>
-                        <a href="{{ url_for('post_view', post_id=post.id) }}">{{ post.title }}</a>
-                        - Likes: {{ post.likes }} - Investimento: {{ post.investment }}
-                    </li>
-                {% endfor %}
-            {% else %}
-                <li>Sem posts ainda.</li>
-            {% endif %}
-        </ul>
-        <hr>
-    {% endfor %}
-</body>
-</html>
+{% for company in companies %}
+  <div class="card" style="margin-bottom: 25px;">
+    <h3>{{ company.company.name }}</h3>
+    <p>{{ company.company.bio }}</p>
+
+    {% if company.company.website %}
+      <p>🌐 <a href="{{ company.company.website }}" target="_blank">Website</a></p>
+    {% endif %}
+
+    {% if company.posts %}
+      <ul style="list-style: none; padding-left: 0;">
+        {% for post in company.posts %}
+          <li style="margin-bottom: 12px;">
+            <a href="{{ url_for('post_view', post_id=post.id) }}" style="text-decoration:none;">
+              <div style="background: #fff; border: 1px solid #ddd; padding: 10px; border-radius: 8px;">
+                <strong>{{ post.title }}</strong><br>
+                <small>Likes: {{ post.likes }} · Investimento: R$ {{ post.investment }} · Score: {{ post.score|round(2) }}</small>
+              </div>
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>Sem posts nessa categoria ainda.</p>
+    {% endif %}
+  </div>
+{% else %}
+  <p>Nenhuma empresa nessa categoria.</p>
+{% endfor %}
+
+{% endblock %}

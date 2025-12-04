@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Editar Categoria</h2>
+
+<form method="POST">
+    <label for="admin_user">Usuário exclusivo:</label>
+    <input type="text" id="admin_user" name="admin_user" required>
+
+    <label for="admin_pass">Senha exclusiva:</label>
+    <input type="password" id="admin_pass" name="admin_pass" required>
+
+    <label for="name">Novo nome da categoria:</label>
+    <input type="text" id="name" name="name" value="{{ category.name }}" required>
+
+    <label for="description">Nova descrição:</label>
+    <textarea id="description" name="description" required>{{ category.description }}</textarea>
+
+    <button type="submit">Salvar alterações</button>
+</form>
+
+{% endblock %}

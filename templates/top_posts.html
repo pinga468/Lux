@@ -29,9 +29,9 @@
         <tr>
             <td>{{ i }}</td>
             <td><a href="{{ url_for('post_view', post_id=post.id) }}">{{ post.title }}</a></td>
-            <td><a href="{{ url_for('company_detail', company_id=post.company_id) }}">{{ post.author.name }}</a></td>
+            <td><a href="{{ url_for('company_detail', company_id=post.company_id) }}">{{ post.company.name }}</a></td>
             <td>{{ post.likes }}</td>
-            <td>{{ post.investment }}</td>
+            <td>R$ {{ post.investment }}</td>
             <td>{{ post.comments|length }}</td>
             <td>{{ post.score|round(2) }}</td>
         </tr>

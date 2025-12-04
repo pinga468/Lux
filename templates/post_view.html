@@ -2,17 +2,19 @@
 {% block content %}
 <div class="card">
   <h2>{{ post.title }}</h2>
-  <p>Autor: {{ post.author.name }} · Categoria: {{ post.category.name }}</p>
+  <p>Autor: {{ post.company.name }} · Categoria: {{ post.category.name }}</p>
   <p>{{ post.content }}</p>
-  <p>Likes: {{ post.likes }} · Investimento total: R$ {{ post.investment }}</p>
+  <p>Likes: {{ likes_count }} · Investimento total: R$ {{ investment_total }}</p>
 
+  <!-- Botão de Like -->
   <form method="POST" style="display:inline">
-    <button name="like" type="submit">Curtir</button>
+    <button type="submit" name="like" value="1">Curtir</button>
   </form>
 
+  <!-- Investimento -->
   <form method="POST" style="display:inline; margin-left:10px">
     <input name="invest" type="number" min="0" value="0">
-    <button name="invest" type="submit">Investir</button>
+    <button type="submit" name="invest" value="1">Investir</button>
   </form>
 
   {% if post.company_id == session.get('company_id') %}
@@ -56,4 +58,3 @@
 {% endif %}
 
 {% endblock %}
-
