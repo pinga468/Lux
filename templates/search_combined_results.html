@@ -1,0 +1,35 @@
+@app.route("/search_combined")
+def search_combined():
+    q = request.args.get("q", "").strip()
+
+    # Validação básica
+    if not q or "+" not in q:
+        return "Formato correto: empresa + título do post", 400
+
+    parts = q.split("+", 1)  # só divide em 2 partes
+    company_name = parts[0].strip()
+    post_name = parts[1].strip()
+
+    if not company_name or not post_name:
+        return "Formato correto: empresa + título do post", 400
+
+    # Busca empresa
+    comp = Company.query.filter(Company.name.ilike(f"%{company_name}%")).first()
+    if not comp:
+        return "Empresa não encontrada", 404
+
+    # Busca posts da empresa
+    posts = Post.query.filter(
+        Post.company_id == comp.id,
+        Post.title.ilike(f"%{post_name}%")
+    ).all()
+
+    if not posts:
+        return "Nenhum post encontrado para essa empresa com esse título", 404
+
+    # Se só tiver 1 post, redireciona direto
+    if len(posts) == 1:
+        return redirect(url_for("post_view", post_id=posts[0].id))
+
+    # Se tiver mais de 1, mostrar uma página com todos os posts encontrados
+    return render_template("search_combined_results.html", company=comp, posts=posts)

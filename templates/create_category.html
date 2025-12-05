@@ -1,13 +1,9 @@
 {% extends "base.html" %}
 {% block content %}
+
 <h2>Criar Categoria</h2>
 
 <form method="POST">
-  <label>Usuário</label><br>
-  <input name="username" required><br><br>
-
-  <label>Senha</label><br>
-  <input type="password" name="password" required><br><br>
 
   <label>Nome da Categoria</label><br>
   <input name="name" required><br><br>
@@ -15,6 +11,10 @@
   <label>Descrição</label><br>
   <textarea name="description"></textarea><br><br>
 
-  <button type="submit">Criar</button>
+  <button type="submit" style="background:#28a745; color:white; padding:8px 14px; border:none; border-radius:6px;">
+    Criar
+  </button>
+
 </form>
+
 {% endblock %}

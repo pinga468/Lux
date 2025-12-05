@@ -1,71 +1,99 @@
-{% for c in categories %}
-<div class="card" style="margin-bottom:30px; padding:15px; border:1px solid #ddd; border-radius:8px;">
-    <h3>{{ c.name }}</h3>
-    <p>{{ c.description }}</p>
+{% extends "base.html" %}
+{% block content %}
 
-    <!-- Botão "Ver todas empresas" no topo -->
-    <a href="/categories/{{ c.id }}/companies" 
-       style="display:inline-block; margin-bottom:15px; color:white; background:#28a745; padding:6px 12px; border-radius:6px; text-decoration:none;">
-        Ver todas empresas
-    </a>
+<h2>Categorias</h2>
 
-    {% if c.posts %}
-        <h4>📌 Melhores posts dessa categoria</h4>
+<!-- BARRAS DE PESQUISA -->
+<div style="margin-bottom: 30px; padding: 15px; border:1px solid #ddd; border-radius:8px; background:#f9f9f9;">
+    <!-- Busca de Empresa -->
+    <form method="GET" action="/search_company" style="margin-bottom: 15px;">
+        <input type="text" name="q" placeholder="Nome da empresa" required style="padding:6px; width:250px;">
+        <button type="submit" style="padding:6px 12px;">Buscar Empresa</button>
+    </form>
 
-        {% set filtered_posts = c.posts|sort(attribute='score', reverse=True) %}
-        <ul style="list-style:none; padding-left:0;">
-        {% for post in filtered_posts %}
-            <li style="margin-bottom:10px;">
-                <!-- Link direto pro post, permitindo POST de like/invest -->
-                <a href="{{ url_for('post_view', post_id=post.id) }}" style="text-decoration:none; color:#333;">
-                    <div style="background:#fff; padding:10px; border:1px solid #ddd; border-radius:8px;">
-                        <strong>{{ post.title }}</strong><br>
-                        Empresa: {{ post.company.name }}<br>
-                        Score do post: {{ post.score|default(0)|round(2) }}
-                    </div>
-                </a>
-            </li>
-        {% endfor %}
-        </ul>
-    {% else %}
-        <p>Sem posts nessa categoria.</p>
-    {% endif %}
-
-    <br>
-    <h4>🏢 Empresas dessa categoria</h4>
-
-    {% if c.companies_sorted %}
-        <ul style="list-style:none; padding-left:0;">
-        {% for company in c.companies_sorted %}
-            <li style="margin-bottom:10px;">
-                <a href="{{ url_for('company_detail', company_id=company.id) }}" style="text-decoration:none; color:#333;">
-                    <div style="background:#fff; padding:10px; border:1px solid #ddd; border-radius:8px;">
-                        <strong>{{ company.name }}</strong><br>
-                        Pontuação total: {{ company.total_score|default(0)|round(2) }}
-                    </div>
-                </a>
-            </li>
-        {% endfor %}
-        </ul>
-    {% else %}
-        <p>Sem empresas nessa categoria.</p>
-    {% endif %}
-
-    <br>
-
-    <!-- Botão de editar categoria -->
-    <a href="{{ url_for('edit_category', category_id=c.id) }}"
-       style="color:white; background:#007bff; padding:6px 12px; border-radius:6px; text-decoration:none; margin-right:10px;">
-        Editar categoria
-    </a>
-
-    <!-- Botão de deletar categoria -->
-    <a href="{{ url_for('delete_category', category_id=c.id) }}"
-       style="color:white; background:red; padding:6px 12px; border-radius:6px; text-decoration:none;">
-        Apagar categoria
-    </a>
-
+    <!-- Busca de Post -->
+    <form method="GET" action="/search_combined">
+        <input type="text" name="q" placeholder="Empresa + Post (ex: Lux + Post X)" required style="padding:6px; width:250px;">
+        <button type="submit" style="padding:6px 12px;">Buscar Post</button>
+    </form>
 </div>
+
+{% if categories %}
+    {% for c in categories %}
+    <div class="card" style="margin-bottom:30px; padding:15px; border:1px solid #ddd; border-radius:8px;">
+        <h3>{{ c.name }}</h3>
+        <p>{{ c.description }}</p>
+
+        <!-- Ver todas empresas -->
+        <a href="/categories/{{ c.id }}/companies" 
+           style="display:inline-block; margin-bottom:15px; color:white; background:#28a745; padding:6px 12px; border-radius:6px; text-decoration:none;">
+            Ver todas empresas
+        </a>
+
+        <!-- POSTS -->
+        {% if c.posts %}
+            <h4>📌 Melhores posts dessa categoria</h4>
+            {% set filtered_posts = c.posts|sort(attribute='score', reverse=True) %}
+            <ul style="list-style:none; padding-left:0;">
+            {% for post in filtered_posts %}
+                <li style="margin-bottom:10px;">
+                    <a href="{{ url_for('post_view', post_id=post.id) }}" style="text-decoration:none; color:#333;">
+                        <div style="background:#fff; padding:10px; border:1px solid #ddd; border-radius:8px;">
+                            <strong>{{ post.title }}</strong><br>
+                            Empresa: {{ post.company.name }}<br>
+                            Score do post: {{ post.score|default(0)|round(2) }}
+                        </div>
+                    </a>
+                </li>
+            {% endfor %}
+            </ul>
+        {% else %}
+            <p>Sem posts nessa categoria.</p>
+        {% endif %}
+
+        <br>
+
+        <!-- EMPRESAS -->
+        <h4>🏢 Empresas dessa categoria</h4>
+        {% if c.companies_sorted %}
+            <ul style="list-style:none; padding-left:0;">
+            {% for company in c.companies_sorted %}
+                <li style="margin-bottom:10px;">
+                    <a href="{{ url_for('company_detail', company_id=company.id) }}" style="text-decoration:none; color:#333;">
+                        <div style="background:#fff; padding:10px; border:1px solid #ddd; border-radius:8px;">
+                            <strong>{{ company.name }}</strong><br>
+                            Pontuação total: {{ company.total_score|default(0)|round(2) }}
+                        </div>
+                    </a>
+                </li>
+            {% endfor %}
+            </ul>
+        {% else %}
+            <p>Sem empresas nessa categoria.</p>
+        {% endif %}
+
+        <br>
+
+        <!-- Botão editar -->
+        <a href="{{ url_for('edit_category', category_id=c.id) }}"
+           style="color:white; background:#007bff; padding:6px 12px; border-radius:6px; text-decoration:none; margin-right:10px;">
+            Editar categoria
+        </a>
+
+        <!-- Botão delete -->
+        <form action="{{ url_for('delete_category', category_id=c.id) }}"
+              method="POST"
+              style="display:inline;">
+            <button type="submit"
+                    style="color:white; background:red; padding:6px 12px; border-radius:6px; border:none; cursor:pointer;">
+                Apagar categoria
+            </button>
+        </form>
+
+    </div>
+    {% endfor %}
 {% else %}
 <p>Nenhuma categoria ainda.</p>
-{% endfor %}
+{% endif %}
+
+{% endblock %}

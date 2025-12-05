@@ -21,10 +21,6 @@
   <!-- BOTÃO PARA O WEBSITE INTERNO (posts, like, invest, etc) -->
   <a href="/company/{{ company.id }}/website" class="btn">Acessar website interno</a>
 
-  <!-- BOTÃO PARA VER O HISTÓRICO DE INVESTIMENTOS -->
-  <br><br>
-  <a href="/company/{{ company.id }}/history" class="btn">Histórico de investimentos</a>
-
   <!-- Se for a própria empresa logada -->
   {% if session.company_id == company.id %}
       <br><br>
@@ -32,6 +28,17 @@
       <br><br>
       <a href="/company/{{ company.id }}/edit" class="btn">Editar empresa</a>
   {% endif %}
+
+  <!-- Se for o Lux, aparece botão para deletar conta -->
+  {% if session.get("name") == "Lux" %}
+      <br><br>
+      <form action="{{ url_for('delete_account', company_id=company.id) }}" method="POST">
+          <button type="submit" style="background:red; color:white; padding:6px 12px; border-radius:6px; border:none; cursor:pointer;">
+              Deletar Conta
+          </button>
+      </form>
+  {% endif %}
+
 </div>
 
 <hr>

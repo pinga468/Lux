@@ -52,7 +52,18 @@ class Category(db.Model):
     name = db.Column(db.String(120), unique=True, nullable=False)
     description = db.Column(db.String(300))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relacionamento com Company — deixa como estava
     companies = db.relationship("Company", backref="category", lazy=True)
+
+    # RELACIONAMENTO CORRETO COM POSTS
+    posts = db.relationship(
+        "Post",
+        backref="category",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
+
 
 class Company(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -75,12 +86,32 @@ class Post(db.Model):
     likes = db.Column(db.Integer, default=0)
     investment = db.Column(db.Integer, default=0)
     score = db.Column(db.Float, default=0)
+
     company_id = db.Column(db.Integer, db.ForeignKey("company.id"), nullable=False)
-    category_id = db.Column(db.Integer, db.ForeignKey("category.id", ondelete="CASCADE"), nullable=False)
-    comments = db.relationship("Comment", backref="post", lazy=True, cascade="all, delete-orphan")
-    investment_history = db.relationship("InvestmentHistory", backref="post", lazy=True, cascade="all, delete-orphan")
+
+    # CASCADE REAL AQUI
+    category_id = db.Column(
+        db.Integer,
+        db.ForeignKey("category.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    comments = db.relationship(
+        "Comment",
+        backref="post",
+        lazy=True,
+        cascade="all, delete-orphan"
+    )
+
+    investment_history = db.relationship(
+        "InvestmentHistory",
+        backref="post",
+        lazy=True,
+        cascade="all, delete-orphan"
+    )
+
     company = db.relationship("Company", backref="posts")
-    category = db.relationship("Category", backref="posts")
+
 
 class Comment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -317,17 +348,7 @@ def company_website(company_id):
     posts = Post.query.filter_by(company_id=company.id).order_by(Post.created_at.desc()).all()
     return render_template("company_website.html", company=company, posts=posts)
 
-@app.route("/company/<int:company_id>/history")
-def company_history(company_id):
-    company = Company.query.get_or_404(company_id)
-    investments_received = (
-        db.session.query(InvestmentHistory)
-        .join(Post, InvestmentHistory.post_id == Post.id)
-        .filter(Post.company_id == company.id)
-        .order_by(InvestmentHistory.created_at.desc())
-        .all()
-    )
-    return render_template("company_history.html", company=company, investments=investments_received)
+
 
 @app.route("/history")
 def history_global():
@@ -349,6 +370,7 @@ def login():
         if not company or company.password != password:
             return render_template("login.html", error="Nome ou senha incorretos")
         session["company_id"] = company.id
+        session["name"] = company.name
         return redirect("/my_account")
     return render_template("login.html")
 
@@ -627,57 +649,85 @@ def post_view(post_id):
 def delete_post(post_id):
     post = Post.query.get_or_404(post_id)
 
-    if "company_id" not in session or session["company_id"] != post.company_id:
+    if "company_id" not in session:
+        return "Você precisa estar logado", 403
+
+    # Pegar a empresa logada
+    logged_company = Company.query.get(session["company_id"])
+
+    # Se não for Lux e não for dono do post → bloqueia
+    if logged_company.name.lower() != "lux" and logged_company.id != post.company_id:
         return "Você não pode apagar esse post", 403
 
     db.session.delete(post)
     db.session.commit()
     return redirect("/")
+
+
 @app.route("/comment/<int:comment_id>/delete", methods=["POST"])
 def delete_comment(comment_id):
     comment = Comment.query.get_or_404(comment_id)
-    if "company_id" not in session or session["company_id"] != comment.company_id:
+
+    if "company_id" not in session:
+        return "Você precisa estar logado", 403
+
+    logged_company = Company.query.get(session["company_id"])
+
+    if logged_company.name.lower() != "lux" and logged_company.id != comment.company_id:
         return "Você não pode apagar esse comentário", 403
+
     db.session.delete(comment)
     db.session.commit()
     return redirect(url_for("post_view", post_id=comment.post_id))
-@app.route("/categories/<int:category_id>/delete", methods=["GET", "POST"])
+
+@app.route("/categories/<int:category_id>/delete", methods=["POST"])
 def delete_category(category_id):
+    if session.get("name") != "Lux":
+        return "Você não pode apagar categorias", 403
+
     category = Category.query.get_or_404(category_id)
+    db.session.delete(category)
+    db.session.commit()
+    return redirect("/categories")
 
-    if request.method == "POST":
-        user = request.form.get("user")
-        password = request.form.get("password")
-
-        if user == "Lux" and password == "Sa0610He":
-            db.session.delete(category)
-            db.session.commit()
-            return redirect("/categories")
-        else:
-            return "Usuário ou senha incorretos!"
-
-    return render_template("confirm_delete_category.html", category=category)
 
 @app.route("/categories/<int:category_id>/edit", methods=["GET", "POST"])
 def edit_category(category_id):
+    # só deixa editar se for o Lux logado
+    if session.get("name") != "Lux":
+        return "Você não pode editar categorias", 403
+
     category = Category.query.get_or_404(category_id)
 
     if request.method == "POST":
-        user = request.form.get("admin_user")
-        password = request.form.get("admin_pass")
+        new_name = request.form.get("name", "").strip()
+        new_description = request.form.get("description", "").strip()
 
-        if user != "Lux" or password != "Sa0610He":
-            return "Acesso negado.", 403
+        if not new_name:
+            return "O nome da categoria não pode ficar vazio.", 400
 
-        category.name = request.form.get("name")
-        category.description = request.form.get("description")
+        # checar se já existe categoria com o mesmo nome (exceto ela mesma)
+        existing = Category.query.filter(
+            Category.name == new_name,
+            Category.id != category.id
+        ).first()
+        if existing:
+            return "Já existe uma categoria com esse nome.", 400
+
+        category.name = new_name
+        category.description = new_description
+
         db.session.commit()
-
         return redirect(url_for("categories"))
 
     return render_template("category_edit.html", category=category)
+
 @app.route("/categories/new", methods=["GET", "POST"])
 def new_category():
+    # só o Lux logado pode criar categoria
+    if session.get("name") != "Lux":
+        return "Você não pode criar categorias", 403
+
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         desc = request.form.get("description", "").strip()
@@ -692,60 +742,105 @@ def new_category():
         return redirect(url_for("categories"))
 
     return render_template("create_category.html")
-
-# ---------------------------------------------------
-#   🔎 PESQUISA COMBINADA (EMPRESA + POST)
-# ---------------------------------------------------
 @app.route("/search_combined")
 def search_combined():
     q = request.args.get("q", "").strip()
 
+    # Validação básica
     if not q or "+" not in q:
-        return "Formato correto: empresa + post", 400
+        return "Formato correto: empresa + título do post", 400
 
-    parts = q.split("+")
-    if len(parts) < 2:
-        return "Formato correto: empresa + post", 400
-
+    parts = q.split("+", 1)  # só divide em 2 partes
     company_name = parts[0].strip()
     post_name = parts[1].strip()
 
+    if not company_name or not post_name:
+        return "Formato correto: empresa + título do post", 400
+
+    # Busca empresa
     comp = Company.query.filter(Company.name.ilike(f"%{company_name}%")).first()
     if not comp:
         return "Empresa não encontrada", 404
 
-    post = Post.query.filter(Post.company_id == comp.id, Post.title.ilike(f"%{post_name}%")).first()
-    if not post:
-        return "Post não encontrado", 404
+    # Busca posts da empresa
+    posts = Post.query.filter(
+        Post.company_id == comp.id,
+        Post.title.ilike(f"%{post_name}%")
+    ).all()
 
-    return redirect(f"/post/{post.id}")
+    if not posts:
+        return "Nenhum post encontrado para essa empresa com esse título", 404
+
+    # Se só tiver 1 post, redireciona direto
+    if len(posts) == 1:
+        return redirect(url_for("post_view", post_id=posts[0].id))
+
+    # Se tiver mais de 1, mostrar uma página com todos os posts encontrados
+    return render_template("search_combined_results.html", company=comp, posts=posts)
+@app.route("/search_company")
+def search_company():
+    # Pega o valor do input
+    q = request.args.get("q", "").strip()
+
+    if not q:
+        return "Digite o nome da empresa", 400
+
+    # Busca empresa pelo nome (case-insensitive)
+    company = Company.query.filter(Company.name.ilike(f"%{q}%")).first()
+
+    if not company:
+        return "Empresa não encontrada", 404
+
+    # Redireciona para a página da empresa
+    return redirect(url_for("company_detail", company_id=company.id))
+    
+
+
+# ---------------------------------------------------
+#   🔎 PESQUISA COMBINADA (EMPRESA + POST)
+# ---------------------------------------------------
+
 @app.route("/delete_account/<int:company_id>", methods=["POST"])
 def delete_account(company_id):
     empresa = Company.query.get(company_id)
     if not empresa:
         return "Empresa não encontrada", 404
 
+    # Pegando usuário logado
+    logged_user = session.get("name")
+
+    # Só permitir se for o dono da conta ou se for Lux
+    if logged_user != empresa.name and logged_user != "Lux":
+        return "Você não tem permissão para excluir esta conta.", 403
+
     try:
         # Deletar todos os investimentos feitos pela empresa
         InvestmentHistory.query.filter_by(company_id=empresa.id).delete()
 
-        # Deletar todos os posts da empresa e os investimentos desses posts
+        # Deletar todos os posts e seus investimentos
         posts = Post.query.filter_by(company_id=empresa.id).all()
         for post in posts:
             InvestmentHistory.query.filter_by(post_id=post.id).delete()
             db.session.delete(post)
 
-        # Deletar todas as mensagens enviadas ou recebidas pela empresa
-        Message.query.filter((Message.sender_id == empresa.id) | (Message.receiver_id == empresa.id)).delete(synchronize_session=False)
+        # Deletar mensagens enviadas ou recebidas
+        Message.query.filter(
+            (Message.sender_id == empresa.id) | (Message.receiver_id == empresa.id)
+        ).delete(synchronize_session=False)
 
-        # Finalmente deletar a empresa
+        # Remover a empresa
         db.session.delete(empresa)
         db.session.commit()
+
+        # Se a própria empresa deletou a si mesma → deslogar
+        if logged_user == empresa.name:
+            session.clear()
+
         return redirect(url_for("home"))
+
     except Exception as e:
         db.session.rollback()
         return f"Erro ao excluir a conta: {str(e)}"
-        
 
 
 # -----------------------------
